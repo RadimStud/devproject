@@ -83,7 +83,7 @@ public partial class Form1
         MinimumSize = new Size(980, 700);
         StartPosition = FormStartPosition.CenterScreen;
         DoubleBuffered = true;
-        AutoScroll = true;
+        AutoScroll = false;
 
         var root = Rows(76, 114, -100, 30);
         root.Padding = new Padding(24, 10, 24, 8);
@@ -127,8 +127,31 @@ public partial class Form1
         body.Controls.Add(right, 1, 0);
         root.Controls.Add(body, 0, 2);
         root.Controls.Add(footer, 0, 3);
-        Controls.Add(root);
+        // A scroll viewport owns an explicitly sized canvas. DockStyle.Fill plus
+        // MinimumSize alone clips content in WinForms and does not expose scrollbars.
+        root.Dock = DockStyle.None;
+        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Name = "viewport", BackColor = Theme.Background };
+        viewport.Controls.Add(root);
+        bool arranging = false;
+        void ArrangeContent()
+        {
+            if (arranging) return;
+            arranging = true;
+            try
+            {
+                int minWidth = (int)Math.Ceiling(930 * DeviceDpi / 96f);
+                int minHeight = (int)Math.Ceiling(850 * DeviceDpi / 96f);
+                viewport.AutoScrollMinSize = new Size(minWidth, minHeight);
+                root.Size = new Size(Math.Max(minWidth, viewport.ClientSize.Width), Math.Max(minHeight, viewport.ClientSize.Height));
+                root.Location = viewport.AutoScrollPosition;
+            }
+            finally { arranging = false; }
+        }
+        viewport.ClientSizeChanged += (_, _) => ArrangeContent();
+        DpiChanged += (_, _) => ArrangeContent();
+        Controls.Add(viewport);
         ResumeLayout(true);
+        ArrangeContent();
     }
     private Card BuildLuckyCard()
     {

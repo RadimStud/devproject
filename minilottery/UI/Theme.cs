@@ -40,6 +40,14 @@ internal sealed class Card : Panel
         Padding = new Padding(20);
         ResizeRedraw = true;
     }
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        e.Graphics.Clear(Theme.Background);
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        using var path = Theme.Round(new RectangleF(.5f, .5f, Width - 1, Height - 1), 14 * DeviceDpi / 96f);
+        using var fill = new SolidBrush(Theme.Surface);
+        e.Graphics.FillPath(fill, path);
+    }
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
@@ -69,7 +77,7 @@ internal sealed class ActionButton : Button
     protected override void OnMouseLeave(EventArgs e) { hovered = false; Invalidate(); base.OnMouseLeave(e); }
     protected override void OnPaint(PaintEventArgs e)
     {
-        e.Graphics.Clear(Parent?.BackColor ?? Theme.Surface);
+        e.Graphics.Clear(Theme.Surface);
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         Color fill = !Enabled ? Theme.Border : Active ? Theme.Teal : Primary ? Theme.Gold : Theme.Inset;
         if (hovered && Enabled) fill = ControlPaint.Light(fill, .08f);

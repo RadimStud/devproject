@@ -20,6 +20,9 @@ internal static class Program
         {
             try
             {
+                // The runner desktop can be 1024x768. Set bounds after Show,
+                // then capture offscreen via DrawToBitmap at the design size.
+                form.ClientSize = new Size(1240, 900);
                 await Task.Delay(200);
                 Capture(form, Path.Combine(output, "minilottery-initial.png"));
                 AssertVisible(form, "luckyPlay", "bonusPlay", "duelPlay", "creditInput", "stakeInput", "frequencyChart");
@@ -59,7 +62,15 @@ internal static class Program
                 form.Size = new Size(1000, 760);
                 await Task.Delay(150);
                 Capture(form, Path.Combine(output, "minilottery-compact.png"));
-                Check(form.VerticalScroll.Visible, "Compact window scrolls to preserve controls");
+                var viewport = Find<Panel>(form, "viewport");
+                Check(viewport.VerticalScroll.Visible, "Compact window scrolls to preserve controls");
+                viewport.ScrollControlIntoView(Find<Button>(form, "duelPlay"));
+                // Scroll the canvas to the bottom: all lower actions must become reachable.
+                viewport.AutoScrollPosition = new Point(0, viewport.VerticalScroll.Maximum);
+                await Task.Delay(100);
+                AssertVisible(form, "duelPlay", "frequencyChart");
+                Capture(form, Path.Combine(output, "minilottery-compact-scrolled.png"));
+                viewport.AutoScrollPosition = Point.Empty;
                 form.ClientSize = new Size(1240, 900);
                 credit.Value = 10000;
                 Find<Button>(form, "duelPlay").PerformClick();
