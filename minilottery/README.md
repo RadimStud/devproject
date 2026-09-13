@@ -4,9 +4,11 @@ Desktopový simulátor pro Windows, C# / Windows Forms / .NET 8. Kredit je virtu
 
 ![Skutečné Windows Forms rozhraní při testovacím běhu](docs/minilottery-preview.png)
 
-Ověřeno na Windows v [CI běhu 34754794602](https://github.com/RadimStud/devproject/actions/runs/34754794602): 313 kontrol pravidel, 22 kontrol UI, build bez varování. [Testovací Windows balíček a screenshoty](https://github.com/RadimStud/devproject/actions/runs/34754794602/artifacts/10317485238). Náhled zachycuje skutečné nativní ovládací prvky v rozložení 1240 × 900; hodnoty jsou z náhodného testovacího běhu.
+Ověřeno na Windows v [CI běhu 34757832080](https://github.com/RadimStud/devproject/actions/runs/34757832080): 313 kontrol miniher, 5126 kontrol Bojovníka a simulovaného obrázkového API, 50 kontrol UI, build bez varování. [Windows balíček a screenshoty](https://github.com/RadimStud/devproject/actions/runs/34757832080/artifacts/10318225379). Náhledy zachycují skutečné nativní ovládací prvky v rozložení 1240 × 900; hodnoty jsou z náhodného testovacího běhu. Kód odpovídá commitu fb51aa640718f76902898fca605ac44a35837f84.
 
 Nová záložka **Bojovník**: vlastní perky, nezávislá sestava PC, sázka na zápas, pět různých bojových scénářů a kronika s ilustracemi. [Pravidla a nastavení AI obrázků](docs/bojovnik.md).
+
+![Bojovník po pátém kole na Windows](docs/warrior-preview.png)
 
 ## Spuštění
 

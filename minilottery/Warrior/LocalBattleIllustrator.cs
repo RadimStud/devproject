@@ -108,7 +108,9 @@ internal sealed class LocalBattleIllustrator : IDisposable
             clip.AddPolygon(new[] { new PointF(0, 0), new PointF(750, 0), new PointF(750, 170), new PointF(590, 170), new PointF(590, 500), new PointF(0, 500) });
         else if (pose == 1)
             clip.AddPolygon(new[] { new PointF(0, 0), new PointF(750, 0), new PointF(750, 500), new PointF(120, 500), new PointF(120, 150), new PointF(0, 150) });
-        else if (pose == 2) clip.AddRectangle(new RectangleF(0, player ? 175 : 130, 486, player ? 325 : 370));
+        else if (pose == 2) clip.AddRectangle(player
+            ? new RectangleF(0, 175, 486, 325)
+            : new RectangleF(130, 130, 356, 370)); // Exclude the adjacent attack pose's red cape.
         else if (!player)
             clip.AddPolygon(new[] { new PointF(0, 0), new PointF(480, 0), new PointF(480, 55), new PointF(350, 55), new PointF(350, 135), new PointF(480, 135), new PointF(480, 500), new PointF(0, 500) });
         else clip.AddRectangle(new RectangleF(0, 0, 480, 500));
