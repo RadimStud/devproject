@@ -26,9 +26,14 @@ internal sealed class LocalBattleIllustrator : IDisposable
         using var g = Graphics.FromImage(image);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        // Crop the arena photograph to a wide composition with the floor still visible.
-        g.DrawImage(arena, new Rectangle(0, 0, 1200, 675), new RectangleF(0, 95, arena.Width, arena.Height - 110), GraphicsUnit.Pixel);
         string environment = round?.Scenario.Id ?? "gate";
+        // Move the camera through the arena without changing the recurring fighters.
+        RectangleF camera = environment switch {
+            "gate" => new(0, 80, 1320, 880), "stairs" => new(230, 115, 1306, 865),
+            "shadow" => new(190, 50, 1346, 880), "feint" => new(90, 155, 1350, 865),
+            "crown" => new(0, 0, 1536, 1024), _ => new(0, 95, 1536, 914)
+        };
+        g.DrawImage(arena, new Rectangle(0, 0, 1200, 675), camera, GraphicsUnit.Pixel);
         using var atmosphere = new SolidBrush(Color.FromArgb(environment == "shadow" ? 100 : 42,
             environment == "fire" ? Color.DarkOrange : environment == "rain" ? Color.SteelBlue : Theme.Background));
         g.FillRectangle(atmosphere, 0, 0, 1200, 675);
@@ -87,6 +92,26 @@ internal sealed class LocalBattleIllustrator : IDisposable
         {
             using var mist = new SolidBrush(Color.FromArgb(30, 150, 197, 195));
             for (int i = 0; i < 10; i++) g.FillEllipse(mist, random.Next(-200, 1000), random.Next(160, 480), 500, 80);
+        }
+        else if (scene == "crown")
+        {
+            using var light = new SolidBrush(Color.FromArgb(32, Theme.Gold));
+            g.FillPolygon(light, new[] { new Point(420, 0), new Point(550, 0), new Point(1080, 675), new Point(200, 675) });
+            using var fabric = new SolidBrush(Color.FromArgb(225, 104, 62, 22));
+            using var trim = new Pen(Theme.Gold, 3);
+            foreach (int x in new[] { 60, 1070 })
+            {
+                Point[] banner = { new(x, 0), new(x + 70, 0), new(x + 70, 155), new(x + 35, 182), new(x, 155) };
+                g.FillPolygon(fabric, banner); g.DrawPolygon(trim, banner);
+                g.DrawLines(trim, new[] { new Point(x + 15, 66), new Point(x + 21, 103), new Point(x + 49, 103), new Point(x + 56, 66), new Point(x + 43, 82), new Point(x + 35, 62), new Point(x + 27, 82), new Point(x + 15, 66) });
+            }
+            using var dust = new SolidBrush(Color.FromArgb(130, Theme.Gold));
+            for (int i = 0; i < 85; i++) g.FillEllipse(dust, random.Next(1200), random.Next(550), 2, 4);
+        }
+        else if (scene is "attrition" or "feint" or "stairs")
+        {
+            using var dust = new SolidBrush(Color.FromArgb(45, 210, 189, 159));
+            for (int i = 0; i < 18; i++) g.FillEllipse(dust, random.Next(50, 1100), random.Next(450, 580), random.Next(15, 90), random.Next(4, 15));
         }
     }
     private void DrawFighter(Graphics g, bool player, int pose)

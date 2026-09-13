@@ -81,6 +81,10 @@ internal static class Program
                 CaptureCanvas(form, Path.Combine(output, "warrior-setup.png"));
                 picture.Image!.Save(Path.Combine(output, "warrior-art-intro.png"), ImageFormat.Png);
                 var firstPerk = Find<NumericUpDown>(form, "warriorPerk0");
+                var preset = Find<ComboBox>(form, "warriorPreset");
+                preset.SelectedIndex = 1;
+                Check(firstPerk.Value == 5 && Enumerable.Range(0, 6).Sum(i => Find<NumericUpDown>(form, $"warriorPerk{i}").Value) == 12, "Preset allocates a legal specialized build");
+                preset.SelectedIndex = 0;
                 firstPerk.Value = 3;
                 Check(!Find<Button>(form, "warriorStart").Enabled, "Invalid perk budget blocks start");
                 firstPerk.Value = 2;
@@ -92,10 +96,16 @@ internal static class Program
                 Check(!Find<Button>(form, "luckyPlay").Enabled, "Cannot play lottery during warrior match");
                 Find<Button>(form, "warriorTab").PerformClick();
                 var next = Find<Button>(form, "warriorNext");
+                Check(!next.Enabled && Find<Label>(form, "warriorTell").Text.Contains("Může to být klam"), "Read opponent and choose tactic before fighting");
+                CaptureCanvas(form, Path.Combine(output, "warrior-tactics.png"));
                 for (int round = 1; round <= 5; round++)
                 {
+                    Check(!next.Enabled, "Each round requires a fresh tactic choice");
+                    Find<Button>(form, $"warriorTactic{(round - 1) % 3}").PerformClick();
+                    Check(next.Enabled, "Tactic unlocks the next round");
                     next.PerformClick();
                     next.PerformClick();
+                    Check(!Find<Button>(form, "warriorTactic0").Enabled, "Tactic locked during round and image generation");
                     await Until(() => Find<Button>(form, $"warriorRound{round}").Enabled);
                     Check(Find<Label>(form, "warriorTitle").Text.StartsWith($"{round}. kolo / 5"), "Double click does not play an extra round");
                     Check(picture.AccessibleDescription?.Contains("zbývá") == true, "Image and accessible story describe the completed round");
@@ -110,8 +120,13 @@ internal static class Program
                 Find<Button>(form, "warriorRound1").PerformClick();
                 Check(Find<Label>(form, "warriorTitle").Text.StartsWith("1. kolo") && credit.Value == expected, "Gallery replays history without reroll or payout");
                 Check(Find<Button>(form, "warriorExport").Enabled, "Chronicle export available after play");
+                Find<Button>(form, "warriorEditBuild").PerformClick();
+                Check(firstPerk.Visible && firstPerk.Enabled, "Can return to perk setup after the match");
+                preset.SelectedIndex = 2;
+                Check(Find<NumericUpDown>(form, "warriorPerk1").Value == 5, "Rematch can use another build");
                 Find<Button>(form, "warriorStart").PerformClick();
                 Check(!Find<Button>(form, "warriorRound1").Enabled, "New match clears old gallery");
+                Find<Button>(form, "warriorTactic1").PerformClick();
                 next.PerformClick();
                 Find<Button>(form, "warriorForfeit").PerformClick();
                 await Until(() => credit.Enabled);
@@ -122,6 +137,7 @@ internal static class Program
                 AssertVisible(form, "warriorNext", "warriorExport");
                 Capture(form, Path.Combine(output, "warrior-compact.png"));
                 Find<Button>(form, "warriorStart").PerformClick();
+                Find<Button>(form, "warriorTactic2").PerformClick();
                 next.PerformClick();
                 form.Close();
                 await Task.Delay(500);
@@ -174,7 +190,7 @@ internal static class Program
         Size previous = canvas.Size;
         try
         {
-            canvas.Size = new Size(1240, 900);
+            canvas.Size = new Size(1240, Find<Control>(form, "warriorPage").Visible ? 980 : 900);
             canvas.PerformLayout();
             using var image = new Bitmap(canvas.Width, canvas.Height);
             canvas.DrawToBitmap(image, new Rectangle(Point.Empty, image.Size));

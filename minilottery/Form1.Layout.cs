@@ -149,9 +149,11 @@ public partial class Form1
             warriorTab.Active = warriorSelected;
             lotteryTab.Invalidate();
             warriorTab.Invalidate();
+            ArrangeContent();
+            if (warriorSelected && ClientSize.Height < 980 && Screen.FromControl(this).WorkingArea.Height >= 1020)
+                ClientSize = new Size(ClientSize.Width, 980);
+            if (warriorSelected && battleMatch == null) footer.Text = "Bojovník · sestav rytíře, nastav sázku a vstup do turnaje o korunu arény.";
         }
-        lotteryTab.Click += (_, _) => SelectPage(false);
-        warriorTab.Click += (_, _) => SelectPage(true);
         root.Controls.Add(pages, 0, 2);
         root.Controls.Add(footer, 0, 3);
         // A scroll viewport owns an explicitly sized canvas. DockStyle.Fill plus
@@ -167,13 +169,15 @@ public partial class Form1
             try
             {
                 int minWidth = (int)Math.Ceiling(930 * DeviceDpi / 96f);
-                int minHeight = (int)Math.Ceiling(850 * DeviceDpi / 96f);
+                int minHeight = (int)Math.Ceiling((warriorPage.Visible ? 980 : 850) * DeviceDpi / 96f);
                 viewport.AutoScrollMinSize = new Size(minWidth, minHeight);
                 root.Size = new Size(Math.Max(minWidth, viewport.ClientSize.Width), Math.Max(minHeight, viewport.ClientSize.Height));
                 root.Location = viewport.AutoScrollPosition;
             }
             finally { arranging = false; }
         }
+        lotteryTab.Click += (_, _) => SelectPage(false);
+        warriorTab.Click += (_, _) => SelectPage(true);
         viewport.ClientSizeChanged += (_, _) => ArrangeContent();
         DpiChanged += (_, _) => ArrangeContent();
         Controls.Add(viewport);

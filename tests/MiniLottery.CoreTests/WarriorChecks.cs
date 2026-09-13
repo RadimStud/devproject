@@ -25,6 +25,11 @@ internal static class WarriorChecks
         foreach (decimal invalid in new[] { 0m, -.01m, .001m, 1000000.01m })
             Reject(() => new WarriorMatch(balanced, invalid, new Random(1)), "Invalid stake rejected");
         var outcomes = new HashSet<RoundWinner>();
+        foreach (var tactic in Enum.GetValues<BattleTactic>())
+        {
+            Check(BattleTactics.Bonus(tactic, tactic) == 0, "Equal tactics have no bonus");
+            Check(BattleTactics.Bonus(BattleTactics.Counter(tactic), tactic) == 5 && BattleTactics.Bonus(tactic, BattleTactics.Counter(tactic)) == -5, "Tactic counters are symmetric");
+        }
         for (int seed = 0; seed < 150; seed++)
         {
             var match = new WarriorMatch(balanced, .25m, new Random(seed));
@@ -35,16 +40,20 @@ internal static class WarriorChecks
             for (int n = 1; n <= 5; n++)
             {
                 int hp = match.PlayerHealth, cp = match.ComputerHealth;
-                var round = match.PlayRound();
+                var round = match.PlayRound((BattleTactic)((n + seed) % 3));
                 Check(round.Number == n && round.PlayerHealth == hp - round.PlayerDamage && round.ComputerHealth == cp - round.ComputerDamage, "Health persists between rounds");
                 Check(round.PlayerHealth >= 0 && round.ComputerHealth >= 0 && (n == 5 || round.PlayerHealth > 0 && round.ComputerHealth > 0), "Combat permits all five rounds without negative health");
                 Check(round.Winner == (round.PlayerPower > round.ComputerPower ? RoundWinner.Player : round.PlayerPower < round.ComputerPower ? RoundWinner.Computer : RoundWinner.Draw), "Round winner agrees with powers");
+                Check(round.PlayerTacticBonus == -round.ComputerTacticBonus && round.PlayerPower == WarriorMatch.Power(match.Player, round.Scenario, round.PlayerRoll, hp) + round.PlayerTacticBonus + round.PlayerRally, "Resolved power includes revealed tactic and rally");
+                Check(round.PlayerRally == 0 && round.ComputerRally == 0 || n == 5 && round.PlayerRally + round.ComputerRally == 3, "Rally is limited to one trailing fighter in the finale");
+                if (n > 1) Check(round.Story.Contains(match.Rounds[n - 2].Scenario.Name), "Story continues from previous scene");
                 string prompt = BattleImagePrompt.Create(match, round);
                 Check(prompt.Contains(round.Story) && prompt.Contains(round.Scenario.Environment), "Image uses the resolved story and scenario");
                 string outcome = round.Winner == RoundWinner.Player ? "teal player knight wins" : round.Winner == RoundWinner.Computer ? "crimson computer knight wins" : "A tied exchange";
                 Check(prompt.Contains(outcome), "Illustration identifies the actual round winner");
             }
             Check(match.Rounds.Select(r => r.Scenario.Id).Distinct().Count() == 5, "Five distinct scenarios");
+            Check(match.Rounds[0].Scenario.Id == "gate" && match.Rounds[4].Scenario.Id == "crown", "Campaign always enters the gate and ends at the crown");
             Check(match.State == WarriorMatchState.Completed && match.PlayerWins == match.Rounds.Count(r => r.Winner == RoundWinner.Player), "Match completes after five rounds");
             outcomes.Add(match.Winner);
             decimal payout = match.TakePayout();
@@ -55,6 +64,14 @@ internal static class WarriorChecks
             Check(match.State == WarriorMatchState.Completed, "Forfeit cannot change a completed result");
         }
         Check(outcomes.Count == 3, "Seeded runs cover wins, losses and draws");
+        var attacker = new WarriorMatch(balanced, 1, new Random(89));
+        var defender = new WarriorMatch(balanced, 1, new Random(89));
+        var attackerRound = attacker.PlayRound(BattleTactic.Assault);
+        var defenderRound = defender.PlayRound(BattleTactic.Guard);
+        Check(attackerRound.ComputerTactic == defenderRound.ComputerTactic && attackerRound.ComputerRoll == defenderRound.ComputerRoll, "PC commits before the current player choice");
+        var rejectedMatch = new WarriorMatch(balanced, 1, new Random(7));
+        Reject(() => rejectedMatch.PlayRound((BattleTactic)123), "Invalid tactic rejected");
+        Check(rejectedMatch.Rounds.Count == 0 && rejectedMatch.PlayerHealth == 100, "Invalid tactic does not consume a round");
         var abandoned = new WarriorMatch(balanced, 1.25m, new Random(9));
         abandoned.PlayRound(); abandoned.Forfeit(); abandoned.Forfeit();
         Check(abandoned.TakePayout() == 0 && abandoned.State == WarriorMatchState.Forfeited, "Forfeit loses only the reserved stake");

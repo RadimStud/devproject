@@ -13,14 +13,15 @@ public partial class Form1
     private readonly NumericUpDown[] perkInputs = Enumerable.Range(0, 6).Select(i => NumberInput($"warriorPerk{i}", 0, 5, 2, 12)).ToArray();
     private readonly Label perkBudget = Copy("Rozděleno 12 / 12 bodů", 10, Theme.Teal, true, "warriorBudget");
     private readonly Label computerBuild = Copy("PC si zvolí perky po zahájení zápasu.\nDostane stejných 12 bodů.", 9, Theme.Muted, name: "warriorComputer");
-    private readonly Label fighterHealth = Copy("TY  100 / 100     ·     PC  100 / 100", 12, Theme.Teal, true, "warriorHealth");
-    private readonly Label fighterScore = Copy("PĚT KOL  /  JEDEN VÍTĚZ", 10, Theme.Gold, true, "warriorScore");
+    private readonly HealthMeter playerHealthMeter = new() { Name = "warriorPlayerHealth", Fighter = "TVŮJ RYTÍŘ", Accent = Theme.Teal, Margin = new Padding(0, 0, 16, 0) };
+    private readonly HealthMeter computerHealthMeter = new() { Name = "warriorComputerHealth", Fighter = "SOUPEŘ", Accent = Theme.Red, Margin = new Padding(16, 0, 0, 0) };
+    private readonly Label fighterScore = Copy("0 : 0", 17, Theme.Gold, true, "warriorScore");
     private readonly Label battleTitle = Copy("Bojovník · kronika tvého souboje", 15, Theme.Text, true, "warriorTitle");
     private readonly Label battleImageStatus = Copy("Místní ilustrace · připraveno", 8, Theme.Muted, name: "warriorImageStatus");
     private readonly Label battleSettlement = Copy("Výhra +sázka · prohra −sázka · remíza vrací sázku.", 9, Theme.Muted, name: "warriorSettlement");
-    private readonly PictureBox battlePicture = new() { Name = "warriorPicture", Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Theme.Inset, AccessibleName = "Ilustrace průběhu souboje" };
+    private readonly BattleSceneView battlePicture = new() { Name = "warriorPicture" };
     private readonly TextBox battleStory = new() { Name = "warriorStory", Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, BackColor = Theme.Surface, ForeColor = Theme.Text, Font = Theme.Font(10), Dock = DockStyle.Fill,
-        Text = "Vyber si perky a sázku v horním panelu. PC poté sestaví svého rytíře se stejným rozpočtem.\r\n\r\nKaždé z pěti kol přinese jinou bojovou situaci. Po kole vznikne ilustrace jeho výsledku. V kronice se můžeš vracet k předchozím kolům." };
+        Text = "Do arény vstupují dva rytíři. Korunu získá ten, kdo vyhraje více z pěti kol.\r\n\r\nSestav svého bojovníka a nastav sázku nahoře. Před každým kolem přečti soupeře a zvol nápor, kryt nebo lest. Tvoje volba ovlivní výsledek." };
     private readonly ComboBox imageMode = new() { Name = "warriorImageMode", DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = Theme.Font(9), AccessibleName = "Způsob generování ilustrací" };
     private readonly ActionButton warriorStart = Button("Zahájit zápas", "warriorStart", true);
     private readonly ActionButton warriorNext = Button("Odehrát 1. kolo", "warriorNext", true);
@@ -39,21 +40,40 @@ public partial class Form1
     private bool battleBusy;
     private bool battleSettled;
     private int selectedRound = -1;
+    private BattleTactic? selectedTactic;
+    private bool editingWarriorBuild = true;
+    private Control? warriorSetupView, warriorDecisionView;
+    private readonly ToolTip warriorTips = new() { AutoPopDelay = 14000 };
+    private readonly ComboBox warriorPreset = new() { Name = "warriorPreset", DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, BackColor = Theme.Inset, ForeColor = Theme.Text, FlatStyle = FlatStyle.Flat, Font = Theme.Font(9) };
+    private readonly Label nextChapter = Copy("DALŠÍ KAPITOLA", 9, Theme.Gold, true, "warriorNextChapter");
+    private readonly Label nextScenario = Copy("", 12, Theme.Text, true, "warriorNextScenario");
+    private readonly Label scenarioHint = Copy("", 9, Theme.Muted, name: "warriorScenarioHint");
+    private readonly Label opponentTell = Copy("", 10, Theme.Text, name: "warriorTell");
+    private readonly Label warriorRecap = Copy("", 9, Theme.Muted, name: "warriorRecap");
+    private readonly ActionButton editWarriorBuild = Button("Upravit perky", "warriorEditBuild");
+    private readonly ActionButton[] tacticButtons = BattleTactics.All.Select(t => Button(t.Name, $"warriorTactic{(int)t.Id}")).ToArray();
 
     private Control BuildWarriorPage()
     {
         var body = Columns(310, -100);
         body.Name = "warriorPage";
-        var setup = Rows(32, 38, 26, 216, 27, 80, 44, 34, 35, -100);
+        var setup = Rows(32, 34, 26, 216, 27, 78, -100);
         setup.Controls.Add(Copy("Sestav svého rytíře", 15, Theme.Text, true), 0, 0);
-        setup.Controls.Add(Copy("Rozděl 12 bodů mezi šest perků.\nKaždý může mít nejvýše 5 bodů.", 9, Theme.Muted), 0, 1);
+        warriorPreset.Items.AddRange(new object[] { "Vyvážený rytíř", "Berserk · síla a obratnost", "Strážce · obrana a odolnost", "Šermíř · taktika a obratnost" });
+        warriorPreset.SelectedIndex = 0;
+        warriorPreset.AccessibleName = "Přednastavená sestava perků";
+        warriorPreset.SelectedIndexChanged += (_, _) => ApplyWarriorPreset();
+        setup.Controls.Add(warriorPreset, 0, 1);
         setup.Controls.Add(perkBudget, 0, 2);
         var perks = Rows(36, 36, 36, 36, 36, 36);
         for (int i = 0; i < 6; i++)
         {
             var row = Columns(-100, 72);
             var info = WarriorBuild.Perks[i];
-            row.Controls.Add(Copy(info.Name, 11, Theme.Text, true), 0, 0);
+            var caption = Copy(info.Name, 11, Theme.Text, true);
+            row.Controls.Add(caption, 0, 0);
+            warriorTips.SetToolTip(caption, info.Description);
+            warriorTips.SetToolTip(perkInputs[i], info.Description);
             perkInputs[i].AccessibleName = info.Name;
             perkInputs[i].AccessibleDescription = info.Description;
             perkInputs[i].ValueChanged += (_, _) => RefreshWarriorControls();
@@ -63,23 +83,58 @@ public partial class Form1
         setup.Controls.Add(perks, 0, 3);
         setup.Controls.Add(Copy("TVŮJ SOUPEŘ", 9, Theme.Gold, true), 0, 4);
         setup.Controls.Add(computerBuild, 0, 5);
-        setup.Controls.Add(warriorStart, 0, 6);
+        setup.Controls.Add(Copy("Rozděl přesně 12 bodů, nejvýše 5 do jednoho perku. Najeď na název perku pro vysvětlení.\n\nSázka platí pro celý zápas. Vzdáním zápasu sázku ztrácíš.", 9, Theme.Muted), 0, 6);
+        warriorSetupView = setup;
+        var decisions = Rows(25, 48, 53, 24, 72, 28, 54, 54, 54, 47, 32, -100);
+        decisions.Controls.Add(nextChapter, 0, 0);
+        decisions.Controls.Add(nextScenario, 0, 1);
+        decisions.Controls.Add(scenarioHint, 0, 2);
+        decisions.Controls.Add(Copy("ČTI SOUPEŘE", 9, Theme.Gold, true), 0, 3);
+        decisions.Controls.Add(opponentTell, 0, 4);
+        decisions.Controls.Add(Copy("ZVOL TAKTIKU PRO TOTO KOLO", 9, Theme.Teal, true), 0, 5);
+        string[] shortRules = { "přemůže lest", "zastaví nápor · menší zranění", "obejde kryt" };
+        for (int i = 0; i < 3; i++)
+        {
+            var tactic = (BattleTactic)i;
+            var button = tacticButtons[i];
+            button.Text = $"{i + 1}   {BattleTactics.Info(tactic).Name.ToUpperInvariant()}\n{shortRules[i]}";
+            button.Font = Theme.Font(9, FontStyle.Bold);
+            button.Margin = new Padding(0, 0, 0, 6);
+            button.Click += (_, _) => { selectedTactic = tactic; RefreshWarriorControls(); };
+            warriorTips.SetToolTip(button, BattleTactics.Info(tactic).Description + " Protitaktika přidává +5 k síle, soupeři −5.");
+            decisions.Controls.Add(button, 0, i + 6);
+        }
+        warriorNext.Margin = new Padding(0, 0, 0, 6);
+        decisions.Controls.Add(warriorNext, 0, 9);
+        editWarriorBuild.Font = Theme.Font(9);
+        editWarriorBuild.Click += (_, _) => { editingWarriorBuild = true; RefreshWarriorControls(); };
+        decisions.Controls.Add(editWarriorBuild, 0, 10);
+        decisions.Controls.Add(warriorRecap, 0, 11);
+        warriorDecisionView = decisions;
+        decisions.Visible = false;
+        var choiceArea = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
+        choiceArea.Controls.Add(setup);
+        choiceArea.Controls.Add(decisions);
+        var sidebar = Rows(-100, 45, 34, 36);
+        sidebar.Controls.Add(choiceArea, 0, 0);
+        sidebar.Controls.Add(warriorStart, 0, 1);
         imageMode.Items.AddRange(new object[] { "Místní ilustrace · bez připojení", "AI obrázky · OpenAI API" });
         imageMode.SelectedIndex = 0;
         imageMode.Margin = new Padding(0, 6, 0, 0);
         imageMode.SelectedIndexChanged += (_, _) => RefreshWarriorControls();
-        setup.Controls.Add(imageMode, 0, 7);
+        imageMode.BackColor = Theme.Inset; imageMode.ForeColor = Theme.Text; imageMode.FlatStyle = FlatStyle.Flat;
+        sidebar.Controls.Add(imageMode, 0, 2);
         warriorImageSettings.Font = Theme.Font(9);
-        setup.Controls.Add(warriorImageSettings, 0, 8);
-        setup.Controls.Add(Copy("Perky mění sílu v různých situacích.\nŠtěstí přidává malý bonus ke každému hodu.\n\nSázka platí pro celý zápas.\nVzdáním zápasu sázku ztrácíš.", 9, Theme.Muted), 0, 9);
-        body.Controls.Add(Wrap(setup, new Padding(0, 0, 14, 0)), 0, 0);
+        sidebar.Controls.Add(warriorImageSettings, 0, 3);
+        body.Controls.Add(Wrap(sidebar, new Padding(0, 0, 14, 0)), 0, 0);
 
-        var stage = Rows(30, 31, -100, 23, 122, 42, 39, 38);
+        var stage = Rows(30, 53, -100, 23, 105, 57, 38, 35);
         stage.Controls.Add(battleTitle, 0, 0);
-        var scoreboard = Columns(-64, -36);
-        scoreboard.Controls.Add(fighterHealth, 0, 0);
+        var scoreboard = Columns(-50, 76, -50);
+        scoreboard.Controls.Add(playerHealthMeter, 0, 0);
         scoreboard.Controls.Add(fighterScore, 1, 0);
-        fighterScore.TextAlign = ContentAlignment.MiddleRight;
+        scoreboard.Controls.Add(computerHealthMeter, 2, 0);
+        fighterScore.TextAlign = ContentAlignment.MiddleCenter;
         stage.Controls.Add(scoreboard, 0, 1);
         stage.Controls.Add(battlePicture, 0, 2);
         stage.Controls.Add(battleImageStatus, 0, 3);
@@ -94,21 +149,22 @@ public partial class Form1
             rounds.Controls.Add(roundButtons[i], i, 0);
         }
         stage.Controls.Add(rounds, 0, 5);
-        var actions = Columns(-33, -23, -21, -23);
-        foreach (var button in new[] { warriorNext, warriorForfeit, warriorSkipImage, warriorExport }) button.Font = Theme.Font(9);
-        actions.Controls.Add(warriorNext, 0, 0);
-        actions.Controls.Add(warriorForfeit, 1, 0);
-        actions.Controls.Add(warriorSkipImage, 2, 0);
-        actions.Controls.Add(warriorExport, 3, 0);
+        var actions = Columns(-33, -33, -34);
+        foreach (var button in new[] { warriorForfeit, warriorSkipImage, warriorExport }) button.Font = Theme.Font(9);
+        actions.Controls.Add(warriorForfeit, 0, 0);
+        actions.Controls.Add(warriorSkipImage, 1, 0);
+        actions.Controls.Add(warriorExport, 2, 0);
         stage.Controls.Add(actions, 0, 6);
         stage.Controls.Add(battleSettlement, 0, 7);
         body.Controls.Add(Wrap(stage, Padding.Empty), 1, 0);
         warriorStart.Click += (_, _) => StartWarriorMatch();
         warriorNext.Click += async (_, _) => await PlayWarriorRoundAsync();
         warriorForfeit.Click += (_, _) => ForfeitWarriorMatch();
-        warriorSkipImage.Click += (_, _) => battleImageCancellation?.Cancel();
+        warriorSkipImage.Click += (_, _) => { if (battleBusy) battleImageCancellation?.Cancel(); else ShowBattleStory(); };
         warriorExport.Click += (_, _) => ExportWarriorChronicle();
         warriorImageSettings.Click += (_, _) => ConfigureBattleImages();
+        battlePicture.DoubleClick += (_, _) => ShowLargeBattleImage();
+        warriorTips.SetToolTip(battlePicture, "Dvojklik otevře ilustraci ve velkém náhledu.");
         return body;
     }
 
@@ -118,6 +174,7 @@ public partial class Form1
         if (battlePicture.Image != null) return;
         battleIntro ??= Illustrator.Render(null);
         battlePicture.Image = battleIntro;
+        battlePicture.SetRound(null);
     }
     private void StartWarriorMatch()
     {
@@ -136,16 +193,19 @@ public partial class Form1
         battleIntro = intro;
         battlePicture.Image = intro;
         battleMatch = match;
+        selectedTactic = null;
+        editingWarriorBuild = false;
         battleSettled = false;
         battleSettlement.ForeColor = Theme.Muted;
         creditInput.Value -= match.Stake;
         runningGame = Game.Warrior;
         computerBuild.Text = $"PC · {match.ComputerName}\n" + string.Join("\n", Enumerable.Range(0, 3).Select(i =>
             $"{WarriorBuild.Perks[i * 2].Name} {match.Computer[(WarriorPerk)(i * 2)]}    ·    {WarriorBuild.Perks[i * 2 + 1].Name} {match.Computer[(WarriorPerk)(i * 2 + 1)]}"));
-        fighterHealth.Text = "TY  100 / 100     ·     PC  100 / 100";
-        fighterScore.Text = "SKÓRE  0 : 0";
+        playerHealthMeter.UpdateHealth(100); computerHealthMeter.UpdateHealth(100);
+        fighterScore.Text = "0 : 0";
+        battlePicture.SetRound(null);
         battleTitle.Text = "Bojovník · postavy jsou připravené";
-        battleStory.Text = $"PC zvolilo své perky. Rezervovaná sázka na celý zápas je {match.Stake:N2}.\r\n\r\nPrvní střet: {match.NextScenario.Name}. {match.NextScenario.Advantage}\r\n\r\nStiskni Odehrát 1. kolo.";
+        battleStory.Text = $"Turnaj O korunu arény začíná. Tvůj soupeř: {match.ComputerName}.\r\n{match.Computer.Describe()}\r\n\r\nRezervovaná sázka: {match.Stake:N2}. Přečti soupeřův postoj vlevo, vyber taktiku a odehraj první kolo.";
         battleSettlement.Text = $"Rezervováno {match.Stake:N2} · výhra vrátí {match.Stake * 2:N2}, remíza {match.Stake:N2}.";
         battleImageStatus.Text = imageMode.SelectedIndex == 1 ? "AI režim · nejvýše 5 placených obrázků v tomto zápase" : "Místní ilustrace · obrázek se sestaví podle výsledku kola";
         footer.Text = "Bojovník · sázka i perky jsou zamčené až do konce zápasu.";
@@ -155,7 +215,8 @@ public partial class Form1
     private async Task PlayWarriorRoundAsync()
     {
         var match = battleMatch;
-        if (match == null || match.State != WarriorMatchState.Active || battleBusy) return;
+        if (match == null || match.State != WarriorMatchState.Active || battleBusy || selectedTactic == null) return;
+        var tactic = selectedTactic.Value;
         battleBusy = true;
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         battleImageCancellation = cancellation;
@@ -163,7 +224,8 @@ public partial class Form1
         int galleryIndex = -1;
         try
         {
-            var round = match.PlayRound();
+            var round = match.PlayRound(tactic);
+            selectedTactic = null;
             if (match.State == WarriorMatchState.Completed) SettleWarriorMatch();
             var localImage = Illustrator.Render(round);
             battleGallery.Add((round, localImage, "Místní ilustrace · podle scénáře a výsledku kola"));
@@ -224,12 +286,13 @@ public partial class Form1
         var item = battleGallery[index];
         var r = item.Round;
         battlePicture.Image = item.Image;
+        battlePicture.SetRound(r);
         battlePicture.AccessibleDescription = r.Story;
         battleTitle.Text = $"{r.Number}. kolo / 5 · {r.Scenario.Name}";
-        fighterHealth.Text = $"TY  {r.PlayerHealth} / 100     ·     PC  {r.ComputerHealth} / 100";
-        fighterScore.Text = $"SKÓRE  {r.PlayerWins} : {r.ComputerWins}";
-        battleStory.Text = r.Story.Replace("\n", "\r\n") +
-            $"\r\n\r\n{r.Scenario.Advantage} Bojová síla: ty {r.PlayerPower} (hod {r.PlayerRoll}), PC {r.ComputerPower} (hod {r.ComputerRoll}).";
+        playerHealthMeter.UpdateHealth(r.PlayerHealth, r.PlayerDamage);
+        computerHealthMeter.UpdateHealth(r.ComputerHealth, r.ComputerDamage);
+        fighterScore.Text = $"{r.PlayerWins} : {r.ComputerWins}";
+        battleStory.Text = $"{BattleTactics.Info(r.PlayerTactic).Name} × {BattleTactics.Info(r.ComputerTactic).Name} · síla {r.PlayerPower} : {r.ComputerPower} · hody {r.PlayerRoll} : {r.ComputerRoll}\r\n\r\n" + r.Story.Replace("\n", "\r\n");
         battleImageStatus.Text = item.Source;
         RefreshWarriorControls();
     }
@@ -266,21 +329,32 @@ public partial class Form1
         perkBudget.Text = $"Rozděleno {points} / 12 bodů";
         perkBudget.ForeColor = points == 12 ? Theme.Teal : Theme.Red;
         foreach (var perk in perkInputs) perk.Enabled = !locked;
+        warriorPreset.Enabled = !locked;
+        if (warriorSetupView != null && warriorDecisionView != null)
+        {
+            warriorSetupView.Visible = editingWarriorBuild;
+            warriorDecisionView.Visible = !editingWarriorBuild;
+            if (editingWarriorBuild) warriorSetupView.BringToFront(); else warriorDecisionView.BringToFront();
+        }
+        editWarriorBuild.Enabled = !locked;
         imageMode.Enabled = warriorImageSettings.Enabled = !locked;
         warriorStart.Enabled = !locked && points == 12;
-        warriorStart.Text = battleMatch == null ? "Zahájit zápas" : "Nový zápas";
-        warriorNext.Enabled = active && !battleBusy;
-        warriorNext.Text = active ? $"Odehrát {battleMatch!.Rounds.Count + 1}. kolo" : "Zápas dokončen";
+        warriorStart.Text = battleMatch == null || editingWarriorBuild ? "Zahájit zápas" : "Odveta · nový zápas";
+        warriorNext.Enabled = active && !battleBusy && selectedTactic.HasValue;
+        warriorNext.Text = active ? selectedTactic.HasValue ? $"Odehrát {battleMatch!.Rounds.Count + 1}. kolo" : "Nejdřív zvol taktiku" : "Zápas dokončen";
         if (battleMatch == null) warriorNext.Text = "Odehrát 1. kolo";
         warriorForfeit.Enabled = active;
-        warriorSkipImage.Enabled = battleBusy && imageMode.SelectedIndex == 1;
+        warriorSkipImage.Text = battleBusy && imageMode.SelectedIndex == 1 ? "Přeskočit AI" : "Celý příběh";
+        warriorSkipImage.Enabled = battleBusy ? imageMode.SelectedIndex == 1 : battleGallery.Count > 0;
         warriorExport.Enabled = battleGallery.Count > 0 && !battleBusy;
+        RefreshWarriorDecision();
         for (int i = 0; i < 5; i++)
         {
             roundButtons[i].Enabled = i < battleGallery.Count && !battleBusy;
             roundButtons[i].Active = i == selectedRound;
-            if (i < battleGallery.Count) roundButtons[i].Text = $"{i + 1}. {(battleGallery[i].Round.Winner == RoundWinner.Player ? "Výhra" : battleGallery[i].Round.Winner == RoundWinner.Computer ? "Prohra" : "Remíza")}";
-            else roundButtons[i].Text = $"{i + 1}. kolo";
+            string[] chapters = { "Brána", "Zkouška", "Zlom", "Výdrž", "Koruna" };
+            if (i < battleGallery.Count) roundButtons[i].Text = $"{i + 1}. {chapters[i]}\n{(battleGallery[i].Round.Winner == RoundWinner.Player ? "Výhra" : battleGallery[i].Round.Winner == RoundWinner.Computer ? "Prohra" : "Remíza")}";
+            else roundButtons[i].Text = $"{i + 1}. {chapters[i]}\nčeká";
             roundButtons[i].Invalidate();
         }
     }
@@ -341,6 +415,7 @@ public partial class Form1
         battleIllustrator?.Dispose();
         battleIllustrator = null;
         battleHttp.Dispose();
+        warriorTips.Dispose();
         battleApiKey = "";
     }
 }

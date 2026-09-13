@@ -13,6 +13,8 @@ public static class BattleImagePrompt
         Keep those identities, clothing colors and left/right positions consistent. Both full bodies clearly visible.
         Scene: a ruined medieval tournament arena with a stone arch gate, columns, a staircase, braziers and distant mountains.
         This round's environment and action: {round.Scenario.Environment}.
+        Chapter: {round.Chapter}. Player tactic: {BattleTactics.Info(round.PlayerTactic).Name}.
+        Computer tactic: {BattleTactics.Info(round.ComputerTactic).Name}.
         Round {round.Number} of 5. Exact outcome: {round.Winner switch {
             RoundWinner.Player => "The teal player knight wins the exchange, advancing with sword extended. The crimson computer knight is pushed back, kneeling but alive.",
             RoundWinner.Computer => "The crimson computer knight wins the exchange, advancing with sword extended. The teal player knight is pushed back, kneeling but alive.",
@@ -23,6 +25,7 @@ public static class BattleImagePrompt
         Player traits: {match.Player.Describe()}. Computer traits: {match.Computer.Describe()}.
         Previous score is player {round.PlayerWins}, computer {round.ComputerWins}; the image must depict this
         round's outcome, not invent a different winner based on the cumulative score.
+        The final story may include a match epilogue; illustrate the resolved exchange rather than a trophy ceremony.
         Rich environmental detail, realistic steel and cloth, dramatic teal shadows and amber firelight.
         No text, no numbers, no UI, no labels, no watermark, no gore.
         """;
