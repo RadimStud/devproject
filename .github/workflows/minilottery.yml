@@ -1,0 +1,38 @@
+name: MiniLottery Windows validation
+on:
+  pull_request:
+    paths: ['minilottery/**', 'tests/**', '.github/workflows/minilottery.yml']
+  push:
+    branches: [master, 'feature/minilottery-*']
+    paths: ['minilottery/**', 'tests/**', '.github/workflows/minilottery.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Verify game rules
+        run: dotnet run --project tests/MiniLottery.CoreTests -c Release
+      - name: Build Windows application
+        run: dotnet build minilottery/Simulation.csproj -c Release --warnaserror
+      - name: Exercise real Windows UI and capture screenshots
+        run: dotnet run --project tests/MiniLottery.SmokeTests -c Release -- artifacts/screenshots
+      - name: Create standalone Windows package
+        run: |
+          dotnet publish minilottery/Simulation.csproj -c Release -r win-x64 --self-contained true -o artifacts/MiniLottery
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path artifacts/MiniLottery/* -DestinationPath artifacts/MiniLottery-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MiniLottery-review
+          path: |
+            artifacts/screenshots/
+            artifacts/MiniLottery-windows-x64.zip
+          if-no-files-found: warn
