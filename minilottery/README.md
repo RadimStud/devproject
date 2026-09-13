@@ -4,11 +4,11 @@ Desktopový simulátor pro Windows, C# / Windows Forms / .NET 8. Kredit je virtu
 
 ![Skutečné Windows Forms rozhraní při testovacím běhu](docs/minilottery-preview.png)
 
-Ověřeno na Windows v [CI běhu 34758006447](https://github.com/RadimStud/devproject/actions/runs/34758006447): 313 kontrol miniher, 5126 kontrol Bojovníka a simulovaného obrázkového API, 50 kontrol UI, build bez varování. [Windows balíček a screenshoty](https://github.com/RadimStud/devproject/actions/runs/34758006447/artifacts/10317504775). Náhledy zachycují skutečné nativní ovládací prvky v rozložení 1240 × 900; hodnoty jsou z náhodného testovacího běhu. Aplikační a testovací kód odpovídá ověřenému commitu 6c1a343b9d5f2e4db9fd8e8112a47680541d1fbb. Poslední změna aktualizuje pouze dokumentaci a náhled.
+Ověřeno na Windows v [CI běhu 34760984437](https://github.com/RadimStud/devproject/actions/runs/34760984437): 313 kontrol miniher, 7385 kontrol Bojovníka a simulovaného obrázkového API, 69 kontrol UI, build bez varování. [Windows balíček a screenshoty](https://github.com/RadimStud/devproject/actions/runs/34760984437/artifacts/10318951568). Náhledy zachycují skutečné nativní ovládací prvky v rozložení 1240 × 900 (minihry) a 1240 × 980 (Bojovník); hodnoty jsou z náhodného testovacího běhu. Aplikační a testovací kód odpovídá ověřenému commitu b11cd08098e53f6ee1e33fb35bee6d48e646913e. Poslední změna aktualizuje pouze dokumentaci a náhled.
 
 **Bojovník 1.3**: taktické volby před každým kolem, čtení soupeře, navazující pětikapitolový turnaj s finále o korunu, čtyři sestavy perků, ukazatele zdraví, větší ilustrace a příběhová kronika. Sázka platí pro celý zápas. [Pravidla a nastavení AI obrázků](docs/bojovnik.md).
 
-![Bojovník po pátém kole na Windows](docs/warrior-preview.png)
+![Bojovník na Windows — příprava taktiky před kolem](docs/warrior-preview.png)
 
 ## Spuštění
 
