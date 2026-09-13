@@ -7,6 +7,7 @@ partial class Form1
         if (disposing)
         {
             lifetime.Cancel();
+            DisposeWarrior();
         }
         base.Dispose(disposing);
     }

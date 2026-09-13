@@ -37,3 +37,4 @@ for (int seed = 0; seed < 50; seed++)
 try { new LotterySession(new[] { 0, 10, 2 }, new Random(0)); throw new Exception("Accepted invalid digit"); }
 catch (ArgumentException) { checks++; }
 Console.WriteLine($"PASS: {checks} checks (rules, balance, seeded simulations, history and frequencies).");
+await WarriorChecks.Run(Check);

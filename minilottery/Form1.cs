@@ -5,13 +5,13 @@ namespace WinFormsApp1;
 
 public partial class Form1 : Form
 {
-    private enum Game { Lucky, Bonus, Duel }
+    private enum Game { Lucky, Bonus, Duel, Warrior }
     private readonly Random random = new();
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource? activeSession;
     private Game? runningGame;
     private Game? autoGame;
-    private readonly GameStats[] stats = { new(), new(), new() };
+    private readonly GameStats[] stats = { new(), new(), new(), new() };
     private readonly List<int> luckyRounds = new();
     private int[] commonNumbers = { 1, 1, 1 };
     private Draw[] luckyHistory = Array.Empty<Draw>();
@@ -27,7 +27,7 @@ public partial class Form1 : Form
         bonusAuto.Click += async (_, _) => await StartAsync(Game.Bonus, true);
         duelAuto.Click += async (_, _) => await StartAsync(Game.Duel, true);
         historyButton.Click += (_, _) => ShowHistory();
-        FormClosing += (_, _) => { lifetime.Cancel(); activeSession?.Cancel(); };
+        FormClosing += (_, _) => { lifetime.Cancel(); activeSession?.Cancel(); ForfeitWarriorMatch(); };
         RefreshControls();
     }
 
@@ -203,7 +203,7 @@ public partial class Form1 : Form
     private void RefreshStats()
     {
         var labels = new[] { luckyStats, bonusStats, duelStats };
-        for (int i = 0; i < stats.Length; i++)
+        for (int i = 0; i < labels.Length; i++)
         {
             var s = stats[i];
             labels[i].Text = $"Her: {s.Games:N0}  ·  Bilance {Signed(s.Net)}\nMaximum {Signed(s.HighestNet)}  ·  Minimum {Signed(s.LowestNet)}";
@@ -233,6 +233,7 @@ public partial class Form1 : Form
         creditInput.Enabled = stakeInput.Enabled = parity.Enabled = animate.Enabled = !busy;
         foreach (var digit in digits) digit.Enabled = !busy;
         historyButton.Enabled = !busy && (luckyHistory.Length > 0 || bonusHistory.Length > 0);
+        RefreshWarriorControls();
     }
     private void ShowHistory()
     {

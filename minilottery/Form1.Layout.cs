@@ -88,14 +88,23 @@ public partial class Form1
         var root = Rows(76, 114, -100, 30);
         root.Padding = new Padding(24, 10, 24, 8);
         root.MinimumSize = new Size(930, 850);
-        var header = Columns(-65, -35);
+        var header = Columns(-38, -35, -27);
         var brand = Rows(38, 24);
         brand.Controls.Add(Copy("◈  MiniLottery", 24, Theme.Text, true), 0, 0);
         brand.Controls.Add(Copy("MALÁ HRA. VELKÁ ZVĚDAVOST.", 8, Theme.Muted), 0, 1);
         header.Controls.Add(brand, 0, 0);
-        var badge = Copy("●  SIMULÁTOR  /  VIRTUÁLNÍ KREDIT", 9, Theme.Teal, true);
+        var badge = Copy("●  VIRTUÁLNÍ KREDIT", 9, Theme.Teal, true);
         badge.TextAlign = ContentAlignment.MiddleRight;
-        header.Controls.Add(badge, 1, 0);
+        header.Controls.Add(badge, 2, 0);
+        var navigation = Columns(-50, -50);
+        navigation.Padding = new Padding(0, 10, 0, 16);
+        var lotteryTab = Button("Minihry", "lotteryTab");
+        var warriorTab = Button("Bojovník", "warriorTab");
+        lotteryTab.Active = true;
+        lotteryTab.AccessibleRole = warriorTab.AccessibleRole = AccessibleRole.PageTab;
+        navigation.Controls.Add(lotteryTab, 0, 0);
+        navigation.Controls.Add(warriorTab, 1, 0);
+        header.Controls.Add(navigation, 1, 0);
         root.Controls.Add(header, 0, 0);
 
         var wallet = Columns(-36, -28, -36);
@@ -125,7 +134,25 @@ public partial class Form1
         right.Controls.Add(BuildBonusCard(), 0, 0);
         right.Controls.Add(BuildDuelCard(), 0, 1);
         body.Controls.Add(right, 1, 0);
-        root.Controls.Add(body, 0, 2);
+        var pages = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty, BackColor = Theme.Background };
+        var warriorPage = BuildWarriorPage();
+        warriorPage.Visible = false;
+        pages.Controls.Add(warriorPage);
+        pages.Controls.Add(body);
+        void SelectPage(bool warriorSelected)
+        {
+            if (warriorSelected) PrepareWarriorIntro();
+            body.Visible = !warriorSelected;
+            warriorPage.Visible = warriorSelected;
+            if (warriorSelected) warriorPage.BringToFront(); else body.BringToFront();
+            lotteryTab.Active = !warriorSelected;
+            warriorTab.Active = warriorSelected;
+            lotteryTab.Invalidate();
+            warriorTab.Invalidate();
+        }
+        lotteryTab.Click += (_, _) => SelectPage(false);
+        warriorTab.Click += (_, _) => SelectPage(true);
+        root.Controls.Add(pages, 0, 2);
         root.Controls.Add(footer, 0, 3);
         // A scroll viewport owns an explicitly sized canvas. DockStyle.Fill plus
         // MinimumSize alone clips content in WinForms and does not expose scrollbars.
