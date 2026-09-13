@@ -40,6 +40,7 @@ internal static class Program
                     Check(Find<Label>(form, mode + "Stats").Text.Contains("Her: 1"), mode + " game counted once");
                 }
                 Capture(form, Path.Combine(output, "minilottery-played.png"));
+                CaptureCanvas(form, Path.Combine(output, "minilottery-preview.png"));
                 // Auto has a cancellable delay between completed games and cannot re-enter another mode.
                 Find<Button>(form, "duelAuto").PerformClick();
                 Check(!Find<Button>(form, "luckyPlay").Enabled, "Other game disabled during auto");
@@ -116,6 +117,22 @@ internal static class Program
             var control = Find<Control>(form, name);
             Check(control.Visible && bounds.Contains(control.RectangleToScreen(control.ClientRectangle)), name + " visible in default window");
         }
+    }
+    private static void CaptureCanvas(Form form, string path)
+    {
+        // Capture the real native controls at a larger layout size, even when the
+        // CI virtual desktop clamps the outer window to 1024x768.
+        var canvas = Find<Panel>(form, "viewport").Controls[0];
+        Size previous = canvas.Size;
+        try
+        {
+            canvas.Size = new Size(1240, 900);
+            canvas.PerformLayout();
+            using var image = new Bitmap(canvas.Width, canvas.Height);
+            canvas.DrawToBitmap(image, new Rectangle(Point.Empty, image.Size));
+            image.Save(path, ImageFormat.Png);
+        }
+        finally { canvas.Size = previous; }
     }
     private static void Capture(Form form, string path)
     {
