@@ -2,6 +2,10 @@
 
 Desktopový simulátor pro Windows, C# / Windows Forms / .NET 8. Kredit je virtuální; aplikace nemá platby ani připojení k herní službě.
 
+![Skutečné Windows Forms rozhraní při testovacím běhu](docs/minilottery-preview.png)
+
+Ověřeno na Windows v [CI běhu 34754794602](https://github.com/RadimStud/devproject/actions/runs/34754794602): 313 kontrol pravidel, 22 kontrol UI, build bez varování. [Testovací Windows balíček a screenshoty](https://github.com/RadimStud/devproject/actions/runs/34754794602/artifacts/10317485238). Náhled zachycuje skutečné nativní ovládací prvky v rozložení 1240 × 900; hodnoty jsou z náhodného testovacího běhu.
+
 ## Spuštění
 
 Z kořene repozitáře v PowerShellu s .NET 8 SDK:
